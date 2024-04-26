@@ -1,6 +1,6 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import UnstructuredPDFLoader
+from langchain_community.document_loaders import UnstructuredPDFLoader, PDFMinerLoader
 
 
 
@@ -17,7 +17,6 @@ def text_split(extracted_data):
     return text_chunks
 
 def load_unstructured_pdf(path):
-    
-    loader = UnstructuredPDFLoader(path)
-    data = loader.load()
-    return data
+    loader = PDFMinerLoader(path)
+    docs = loader.load()
+    return docs

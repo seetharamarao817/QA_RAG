@@ -15,6 +15,10 @@ import os
 from langchain.chains.summarize import load_summarize_chain
 
 
+OPEN_API_KEY = ''
+
+os.environ["OPENAI_API_KEY"]  = OPEN_API_KEY
+
 
 
 def grade_question(state):
@@ -69,7 +73,7 @@ def grade_question(state):
                 "question": question}
            )
 
-    return {"keys": {"question": question,"score":score,"retriever":state_dict["retriever"],"chunks":state_dict["chunks"]}}
+    return {"keys": {"question": question,"score":score,"retriever":state_dict["retriever"],"summary":state_dict["summary"]}}
 
 def decide_to_generate(state):
     """
@@ -108,7 +112,7 @@ def retrieve(state):
     state_dict = state["keys"]
     question = state_dict["question"]
     documents= state_dict["retriever"].get_relevant_documents(question)
-    return {"keys": {"question": question,"documents":documents,"retriever":state_dict["retriever"],"chunks":state_dict["chunks"]}}
+    return {"keys": {"question": question,"documents":documents,"retriever":state_dict["retriever"],"summary":state_dict["summary"]}}
 
 def generate(state):
     """
@@ -145,10 +149,7 @@ def generate(state):
     }
 
 
-def summarize(state):
-
-    state_dict = state["keys"]
-    question = state_dict["question"]
+def summarize(text_chunks):
     map_template = """The following is a set of documents:
 {text}
 Based on these documents please write a concise summary.
@@ -174,14 +175,27 @@ Helpful Answer:
     combine_prompt=reduce_prompt,
     return_intermediate_steps=False,
 )
-    
-    text_chunks = state_dict["chunks"]
     map_reduce_outputs = map_reduce_chain.invoke(input=text_chunks)
     generation = map_reduce_outputs['output_text']
-    return {
-      "keys": {"question": question, "generation": generation}
+    return generation
+
+def send_summary(state):
+    state_dict = state["keys"]
+    question = state_dict["question"]
+    generation = state_dict["summary"]
+
+    if generation is None:
+        generation = "The summarization process is not yet completed in the meanwhile you can ask QA"
+        return {
+        "keys": {"question": question, "generation": generation}
     }
 
+    else:
+        {
+        "keys": {"question": question, "generation": generation}
+    }
+
+   
 def prepare_for_final(state):
     """
     Passthrough state for final grade.
@@ -220,7 +234,7 @@ def summary_workflow():
     workflow.add_node("retrieve", retrieve)  # retrieve
     workflow.add_node("grade_question", grade_question) 
     workflow.add_node("generate", generate)  
-    workflow.add_node("summarize", summarize)  
+    workflow.add_node("summarize", send_summary)  
     workflow.add_node("prepare_for_final", prepare_for_final)  # passthrough
 
 
